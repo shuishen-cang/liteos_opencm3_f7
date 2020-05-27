@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/hal/**",
+                "${workspaceFolder}/board/**",
+                "${workspaceFolder}/LiteOS/**",
+                "${workspaceFolder}/*/**",
+                "/home/luocang/workspace/02STM32/01opencm3/libopencm3/**"
+            ],
+            "defines": ["STM32F7"],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}
