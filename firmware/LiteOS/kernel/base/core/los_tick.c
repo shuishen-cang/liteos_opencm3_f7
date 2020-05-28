@@ -120,7 +120,7 @@ LITE_OS_SEC_TEXT VOID osTickHandler(VOID)
     osTimesliceCheck();
 #endif
 
-    osTaskScan();   //task timeout scan
+    osTaskScan();   //task timeout scan,在这里调度
 
 #if (LOSCFG_BASE_CORE_SWTMR == YES)
     (VOID)osSwtmrScan();

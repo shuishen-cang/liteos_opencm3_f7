@@ -152,11 +152,8 @@ LITE_OS_SEC_TEXT_INIT VOID *osTskStackInit(UINT32 uwTaskID, UINT32 uwStackSize, 
 
 LITE_OS_SEC_TEXT_INIT VOID osEnterSleep(VOID)
 {
-    // __DSB();
     __asm__ volatile ("dsb 0xF":::"memory");
-    // __WFI();
     __asm__  volatile ("wfi");
-    // __ISB();
     __asm__ volatile ("isb 0xF":::"memory");
 }
 

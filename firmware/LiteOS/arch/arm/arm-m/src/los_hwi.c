@@ -61,7 +61,7 @@ LITE_OS_SEC_VEC
 HWI_PROC_FUNC m_pstHwiForm[OS_VECTOR_CNT] =
 {
     (HWI_PROC_FUNC)0,                    // [0] Top of Stack
-    (HWI_PROC_FUNC)Reset_Handler,        // [1] reset
+    (HWI_PROC_FUNC)reset_handler,        // [1] reset
     (HWI_PROC_FUNC)osHwiDefaultHandler,  // [2] NMI Handler
     (HWI_PROC_FUNC)osHwiDefaultHandler,  // [3] Hard Fault Handler
     (HWI_PROC_FUNC)osHwiDefaultHandler,  // [4] MPU Fault Handler
@@ -74,7 +74,7 @@ HWI_PROC_FUNC m_pstHwiForm[OS_VECTOR_CNT] =
     (HWI_PROC_FUNC)osHwiDefaultHandler,  // [11] SVCall Handler
     (HWI_PROC_FUNC)osHwiDefaultHandler,  // [12] Debug Monitor Handler
     (HWI_PROC_FUNC)0,                    // [13] Reserved
-    (HWI_PROC_FUNC)PendSV_Handler,       // [14] PendSV Handler
+    (HWI_PROC_FUNC)pend_sv_handler,      // [14] PendSV Handler
     (HWI_PROC_FUNC)osHwiDefaultHandler,  // [15] SysTick Handler
 };
 #if (OS_HWI_WITH_ARG == YES)
@@ -178,9 +178,10 @@ LITE_OS_SEC_TEXT_INIT VOID osHwiInit()
     }
 
     /* Interrupt vector table location */
-    SCB->VTOR = (UINT32)m_pstHwiForm;
+    SCB_VTOR = (UINT32)m_pstHwiForm;
+    
 #if (__CORTEX_M >= 0x03U)  /* only for Cortex-M3 and above */
-    NVIC_SetPriorityGrouping(OS_NVIC_AIRCR_PRIGROUP);
+    scb_set_priority_grouping(SCB_AIRCR_PRIGROUP_GROUP16_NOSUB);
 #endif
 
     return;
@@ -230,8 +231,8 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_HwiCreate( HWI_HANDLE_T  uwHwiNum,
 #else
     osSetVector(uwHwiNum, pfnHandler);
 #endif
-    NVIC_EnableIRQ((IRQn_Type)uwHwiNum);
-    NVIC_SetPriority((IRQn_Type)uwHwiNum, usHwiPrio);
+    nvic_enable_irq(uwHwiNum);
+    nvic_set_priority(uwHwiNum,usHwiPrio);
 
     LOS_IntRestore(uvIntSave);
 
@@ -255,7 +256,7 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_HwiDelete(HWI_HANDLE_T uwHwiNum)
         return OS_ERRNO_HWI_NUM_INVALID;
     }
 
-    NVIC_DisableIRQ((IRQn_Type)uwHwiNum);
+    nvic_disable_irq(uwHwiNum);
 
     uwIntSave = LOS_IntLock();
 

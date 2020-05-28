@@ -88,7 +88,7 @@ extern "C" {
  * @ingroup los_config
  * Configuration item for hardware interrupt tailoring
  */
-#define LOSCFG_PLATFORM_HWI                                 NO
+#define LOSCFG_PLATFORM_HWI                                 YES
 
 /**
  * @ingroup los_config
@@ -361,6 +361,7 @@ extern "C" {
     extern UINT32 _ebss;
     // extern UINT32 _Min_Stack_Size;
     // extern UINT32 _Min_Heap_Size;
+    // #define LOS_HEAP_MEM_BEGIN    ((UINT32)(&_ebss) + (UINT32)(&_Min_Stack_Size) + (UINT32)(&_Min_Heap_Size))
     #define LOS_HEAP_MEM_BEGIN    ((UINT32)(&_ebss) + 0x2000)
     #define LOS_HEAP_MEM_END      ((UINT32)BOARD_SRAM_END_ADDR  )
 

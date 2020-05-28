@@ -1,17 +1,30 @@
 #include "usr_uart.h"
 
+#include "los_config.h"
+#include "los_task.h"
+#include "los_task.h"
+
+static UINT32 uart_tskHandle_ld;
+VOID uart_thread_proc(UINT32 uwArg){                  
+    uwArg = uwArg;
+
+    while(1){
+		
+        LOS_Msleep(400);
+    }
+}
+
+
 void usr_uart_initial(void){
-    rcc_periph_clock_enable(RCC_USART3);
+	hal_uart_initial();
 
-    usart_set_baudrate(USART3, 115200);
-	usart_set_databits(USART3, 8);
-	usart_set_stopbits(USART3, USART_STOPBITS_1);
-	usart_set_mode(USART3, USART_MODE_TX_RX);
-	usart_set_parity(USART3, USART_PARITY_NONE);
-	usart_set_flow_control(USART3, USART_FLOWCONTROL_NONE);
+	TSK_INIT_PARAM_S task_init_param;
 
-	/* Finally enable the USART. */
-	usart_enable(USART3);
+    task_init_param.usTaskPrio = 3;
+    task_init_param.pcName = "uart";
+    task_init_param.pfnTaskEntry = (TSK_ENTRY_FUNC)uart_thread_proc;
+    task_init_param.uwStackSize = 0x800;
+    LOS_TaskCreate(&uart_tskHandle_ld, &task_init_param);
 }
 
 

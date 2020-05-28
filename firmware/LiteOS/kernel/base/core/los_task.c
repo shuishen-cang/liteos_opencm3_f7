@@ -496,21 +496,21 @@ LITE_OS_SEC_TEXT_INIT UINT32 osTaskInit(VOID)
     UINT32 uwIndex;
     LOS_DL_LIST *pstListObject;
 
-    uwSize = (g_uwTskMaxNum + 1) * sizeof(LOS_TASK_CB);
+    uwSize = (g_uwTskMaxNum + 1) * sizeof(LOS_TASK_CB);                     //先统一申请任务TCB内存，该部分和任务堆栈分离
     g_pstTaskCBArray = (LOS_TASK_CB *)LOS_MemAlloc(m_aucSysMem0, uwSize);
     if (NULL == g_pstTaskCBArray)
     {
         return LOS_ERRNO_TSK_NO_MEMORY;
     }
 
-    (VOID)memset(g_pstTaskCBArray, 0, uwSize);
-    LOS_ListInit(&g_stTaskTimerList);
+    (VOID)memset(g_pstTaskCBArray, 0, uwSize);                              //对该部分清零
+    LOS_ListInit(&g_stTaskTimerList);                                       //初始化任务定时器链表
     LOS_ListInit(&g_stLosFreeTask);
     LOS_ListInit(&g_stTskRecyleList);
-    for (uwIndex = 0; uwIndex <= LOSCFG_BASE_CORE_TSK_LIMIT; uwIndex++)
+    for (uwIndex = 0; uwIndex <= LOSCFG_BASE_CORE_TSK_LIMIT; uwIndex++)     //链表串起来
     {
         g_pstTaskCBArray[uwIndex].usTaskStatus = OS_TASK_STATUS_UNUSED;
-        g_pstTaskCBArray[uwIndex].uwTaskID = uwIndex;
+        g_pstTaskCBArray[uwIndex].uwTaskID = uwIndex;                       //任务分ID
         LOS_ListTailInsert(&g_stLosFreeTask, &g_pstTaskCBArray[uwIndex].stPendList);
     }
 
@@ -1321,7 +1321,8 @@ LITE_OS_SEC_TEXT_MINOR UINT32 LOS_TaskYield(VOID)
 
 /*****************************************************************************
  Function : LOS_TaskLock
- Description : Task lock
+ Description : Task lock，当g_usLosTaskLock不等于0的时候，该任务不发生调度，暂时拥有最高优先级
+                但是可以被中断，因此该锁仅用于任务间通信
  Input       : None
  Output      : None
  Return      : None

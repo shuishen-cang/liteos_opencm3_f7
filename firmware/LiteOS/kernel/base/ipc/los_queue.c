@@ -106,6 +106,7 @@ LITE_OS_SEC_TEXT_INIT UINT32 osQueueInit(VOID)
                usMaxMsgSize --- Maximum message size in byte
  Output      : puwQueueID   --- Queue ID
  Return      : LOS_OK on success or error code on failure
+ *| (4byte)message 1 | (4byte)message 2 | (4byte)message 3 | (4byte)message 4 
  *****************************************************************************/
 LITE_OS_SEC_TEXT_INIT UINT32 LOS_QueueCreate(CHAR *pcQueueName,
                                           UINT16 usLen,
@@ -117,52 +118,52 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_QueueCreate(CHAR *pcQueueName,
     UINTPTR         uvIntSave;
     LOS_DL_LIST     *pstUnusedQueue;
     UINT8           *pucQueue;
-    UINT16          usMsgSize = usMaxMsgSize + sizeof(UINT32);
+    UINT16          usMsgSize = usMaxMsgSize + sizeof(UINT32);      //有一部分消耗，浪费
 
     (VOID)pcQueueName;
     (VOID)uwFlags;
 
-    if (NULL == puwQueueID)
+    if (NULL == puwQueueID)                                         //输出的ID必须要有变量可以存储
     {
         return LOS_ERRNO_QUEUE_CREAT_PTR_NULL;
     }
 
-    if(usMaxMsgSize > OS_NULL_SHORT -4)
+    if(usMaxMsgSize > OS_NULL_SHORT -4)                             //最大消息长度超了
     {
         return LOS_ERRNO_QUEUE_SIZE_TOO_BIG;
     }
 
-    if ((0 == usLen) || (0 == usMaxMsgSize))
+    if ((0 == usLen) || (0 == usMaxMsgSize))                        //如果数据长度为0
     {
         return LOS_ERRNO_QUEUE_PARA_ISZERO;
     }
 
     /* Memory allocation is time-consuming, to shorten the time of disable interrupt,
        move the memory allocation to here. */
-    pucQueue = (UINT8 *)LOS_MemAlloc(m_aucSysMem0, usLen * usMsgSize);
-    if (NULL == pucQueue)
+    pucQueue = (UINT8 *)LOS_MemAlloc(m_aucSysMem0, usLen * usMsgSize);  //例如16 x 8，申请内存
+    if (NULL == pucQueue)                                               //如果申请失败
     {
         return LOS_ERRNO_QUEUE_CREATE_NO_MEMORY;
     }
 
-    uvIntSave = LOS_IntLock();
-    if (LOS_ListEmpty(&g_stFreeQueueList))
+    uvIntSave = LOS_IntLock();                                          //上锁
+    if (LOS_ListEmpty(&g_stFreeQueueList))                              //如果空闲的queue列表为空                            
     {
-        LOS_IntRestore(uvIntSave);
-        (VOID)LOS_MemFree(m_aucSysMem0, pucQueue);
-        return LOS_ERRNO_QUEUE_CB_UNAVAILABLE;
+        LOS_IntRestore(uvIntSave);                                      //下锁
+        (VOID)LOS_MemFree(m_aucSysMem0, pucQueue);                      //释放内存空间
+        return LOS_ERRNO_QUEUE_CB_UNAVAILABLE;                          
     }
 
-    pstUnusedQueue = LOS_DL_LIST_FIRST(&(g_stFreeQueueList));
+    pstUnusedQueue = LOS_DL_LIST_FIRST(&(g_stFreeQueueList));           //第一个没有使用的queue列表
     LOS_ListDelete(pstUnusedQueue);
     pstQueueCB = (GET_QUEUE_LIST(pstUnusedQueue));
-    pstQueueCB->usQueueLen = usLen;
-    pstQueueCB->usQueueSize = usMsgSize;
-    pstQueueCB->pucQueue = pucQueue;
-    pstQueueCB->usQueueState = OS_QUEUE_INUSED;
-    pstQueueCB->usReadWriteableCnt[OS_QUEUE_READ]  = 0;
-    pstQueueCB->usReadWriteableCnt[OS_QUEUE_WRITE] = usLen;
-    pstQueueCB->usQueueHead = 0;
+    pstQueueCB->usQueueLen = usLen;                                     //数据长度
+    pstQueueCB->usQueueSize = usMsgSize;                                //数据结构深度
+    pstQueueCB->pucQueue = pucQueue;                                    //内存起始点
+    pstQueueCB->usQueueState = OS_QUEUE_INUSED;                         //queue状态
+    pstQueueCB->usReadWriteableCnt[OS_QUEUE_READ]  = 0;                 //可读数据为0
+    pstQueueCB->usReadWriteableCnt[OS_QUEUE_WRITE] = usLen;             //可写数据为queue长度
+    pstQueueCB->usQueueHead = 0;                        
     pstQueueCB->usQueueTail = 0;
     LOS_ListInit(&pstQueueCB->stReadWriteList[OS_QUEUE_READ]);
     LOS_ListInit(&pstQueueCB->stReadWriteList[OS_QUEUE_WRITE]);
@@ -228,6 +229,10 @@ LITE_OS_SEC_TEXT static INLINE UINT32 osQueueWriteParameterCheck(UINT32 uwQueueI
     return LOS_OK;
 }
 
+/***
+ * 对消息队列进行读写操作，但是该函数没有判断是否在中断中，是否存在有效数据
+ * 
+ * ***************************************/
 LITE_OS_SEC_TEXT static INLINE VOID osQueueBufferOperate(QUEUE_CB_S *pstQueueCB, UINT32 uwOperateType, VOID *pBufferAddr, UINT32 *puwBufferSize)
 {
     UINT8        *pucQueueNode;
@@ -235,20 +240,20 @@ LITE_OS_SEC_TEXT static INLINE VOID osQueueBufferOperate(QUEUE_CB_S *pstQueueCB,
     UINT16      usQueuePosion = 0;
 
     /* get the queue position */
-    switch (OS_QUEUE_OPERATE_GET(uwOperateType))
+    switch (OS_QUEUE_OPERATE_GET(uwOperateType))        //操作类型
     {
         case OS_QUEUE_READ_HEAD:
-            usQueuePosion = pstQueueCB->usQueueHead;
+            usQueuePosion = pstQueueCB->usQueueHead;    //读取head指针指向的地址，并且指针右移
             (pstQueueCB->usQueueHead + 1 == pstQueueCB->usQueueLen) ? (pstQueueCB->usQueueHead = 0) : (pstQueueCB->usQueueHead++);
             break;
 
-        case OS_QUEUE_WRITE_HEAD:
+        case OS_QUEUE_WRITE_HEAD:                       //读取head指针指向的地址，并且指针左移，该方式先进后出
             (0 == pstQueueCB->usQueueHead) ? (pstQueueCB->usQueueHead = pstQueueCB->usQueueLen - 1) : (--pstQueueCB->usQueueHead);
             usQueuePosion = pstQueueCB->usQueueHead;
             break;
 
         case OS_QUEUE_WRITE_TAIL :
-            usQueuePosion = pstQueueCB->usQueueTail;
+            usQueuePosion = pstQueueCB->usQueueTail;    //读取head指针指向的地址，并且指针右移，该方式先进先出
             (pstQueueCB->usQueueTail + 1 == pstQueueCB->usQueueLen) ? (pstQueueCB->usQueueTail = 0) : (pstQueueCB->usQueueTail++);
             break;
 
@@ -257,26 +262,26 @@ LITE_OS_SEC_TEXT static INLINE VOID osQueueBufferOperate(QUEUE_CB_S *pstQueueCB,
             return;
     }
 
-    pucQueueNode = &(pstQueueCB->pucQueue[(usQueuePosion * (pstQueueCB->usQueueSize))]);
+    pucQueueNode = &(pstQueueCB->pucQueue[(usQueuePosion * (pstQueueCB->usQueueSize))]);    //对上述的地址进行指针计算，返回一个指针
 
-    if(OS_QUEUE_IS_POINT(uwOperateType))
+    if(OS_QUEUE_IS_POINT(uwOperateType))                        //如果队列的对象只是一个数据
     {
-        if(OS_QUEUE_IS_READ(uwOperateType))
+        if(OS_QUEUE_IS_READ(uwOperateType))                     //如果是读操作
         {
-            *(UINT32 *)pBufferAddr = *(UINT32 *)pucQueueNode;
+            *(UINT32 *)pBufferAddr = *(UINT32 *)pucQueueNode;   //直接赋值
         }
-        else
+        else                                                    //写操作
         {
             *(UINT32 *)pucQueueNode = *(UINT32 *)pBufferAddr;//change to pp when calling osQueueOperate
         }
     }
     else
     {
-        if(OS_QUEUE_IS_READ(uwOperateType))
+        if(OS_QUEUE_IS_READ(uwOperateType))                     //读操作
         {
             memcpy((VOID *)&uwMsgDataSize, (VOID *)(pucQueueNode + pstQueueCB->usQueueSize - sizeof(UINT32)), sizeof(UINT32));
             memcpy((VOID *)pBufferAddr, (VOID *)pucQueueNode, uwMsgDataSize);
-            *puwBufferSize = uwMsgDataSize;
+            *puwBufferSize = uwMsgDataSize;                     //读两部分，一个是额外的UINT32，可以用来描述有效数据长度
         }
         else
         {
@@ -286,59 +291,61 @@ LITE_OS_SEC_TEXT static INLINE VOID osQueueBufferOperate(QUEUE_CB_S *pstQueueCB,
     }
 }
 
-
+/************************************************************
+ * 这块挺牛逼的，使用任务挂起恢复机制，并且独立的锁，对的数据操作，后期可以借鉴
+ * **********************************************************/
 LITE_OS_SEC_TEXT UINT32 osQueueOperate(UINT32 uwQueueID, UINT32 uwOperateType, VOID *pBufferAddr, UINT32 *puwBufferSize, UINT32 uwTimeOut)
 {
-    QUEUE_CB_S *pstQueueCB;
+    QUEUE_CB_S  *pstQueueCB;
     LOS_TASK_CB  *pstRunTsk;
     UINTPTR      uvIntSave;
     LOS_TASK_CB  *pstResumedTask;
     UINT32       uwRet = LOS_OK;
-    UINT32       uwReadWrite = OS_QUEUE_READ_WRITE_GET(uwOperateType);
+    UINT32       uwReadWrite = OS_QUEUE_READ_WRITE_GET(uwOperateType);      //判断是读是写
 
-    uvIntSave = LOS_IntLock();
+    uvIntSave = LOS_IntLock();                              //上锁
 
-    pstQueueCB = (QUEUE_CB_S *)GET_QUEUE_HANDLE(uwQueueID);
-    if (OS_QUEUE_UNUSED == pstQueueCB->usQueueState)
+    pstQueueCB = (QUEUE_CB_S *)GET_QUEUE_HANDLE(uwQueueID); //根据ID读取queue的控制块
+    if (OS_QUEUE_UNUSED == pstQueueCB->usQueueState)        //如果是无效的queue
     {
         uwRet = LOS_ERRNO_QUEUE_NOT_CREATE;
         goto QUEUE_END;
 
     }
 
-    if(OS_QUEUE_IS_READ(uwOperateType) && (*puwBufferSize < pstQueueCB->usQueueSize - sizeof(UINT32)))
+    if(OS_QUEUE_IS_READ(uwOperateType) && (*puwBufferSize < pstQueueCB->usQueueSize - sizeof(UINT32)))  //如果是读
     {
-        uwRet = LOS_ERRNO_QUEUE_READ_SIZE_TOO_SMALL;
+        uwRet = LOS_ERRNO_QUEUE_READ_SIZE_TOO_SMALL;        //读取深度对不上
         goto QUEUE_END;
     }
     else if(OS_QUEUE_IS_WRITE(uwOperateType) && (*puwBufferSize > pstQueueCB->usQueueSize - sizeof(UINT32)))
     {
-        uwRet = LOS_ERRNO_QUEUE_WRITE_SIZE_TOO_BIG;
+        uwRet = LOS_ERRNO_QUEUE_WRITE_SIZE_TOO_BIG;         //读取深度太大
         goto QUEUE_END;
     }
 
-    if (0 == pstQueueCB->usReadWriteableCnt[uwReadWrite])
+    if (0 == pstQueueCB->usReadWriteableCnt[uwReadWrite])   //如果没有可以操作的数据
     {
-        if (LOS_NO_WAIT == uwTimeOut)
+        if (LOS_NO_WAIT == uwTimeOut)                       //如果不等待，直接返回空或者满的标志
         {
             uwRet = OS_QUEUE_IS_READ(uwOperateType) ? LOS_ERRNO_QUEUE_ISEMPTY : LOS_ERRNO_QUEUE_ISFULL;
             goto QUEUE_END;
         }
 
-        if (g_usLosTaskLock)
+        if (g_usLosTaskLock)                                //如果已经上锁了         
         {
-            uwRet = LOS_ERRNO_QUEUE_PEND_IN_LOCK;
+            uwRet = LOS_ERRNO_QUEUE_PEND_IN_LOCK;           //反馈上锁错误码
             goto QUEUE_END;
         }
 
-        pstRunTsk = (LOS_TASK_CB *)g_stLosTask.pstRunTask;
-        osTaskWait(&pstQueueCB->stReadWriteList[uwReadWrite], OS_TASK_STATUS_PEND_QUEUE, uwTimeOut);
-        LOS_IntRestore(uvIntSave);
-        LOS_Schedule();
+        pstRunTsk = (LOS_TASK_CB *)g_stLosTask.pstRunTask;      //获取当前运行的任务控制块
+        osTaskWait(&pstQueueCB->stReadWriteList[uwReadWrite], OS_TASK_STATUS_PEND_QUEUE, uwTimeOut);    //挂起当前的任务
+        LOS_IntRestore(uvIntSave);                              //下锁
+        LOS_Schedule();                                         //调度
 
-        uvIntSave = LOS_IntLock();
+        uvIntSave = LOS_IntLock();                              //上锁
 
-        if (pstRunTsk->usTaskStatus & OS_TASK_STATUS_TIMEOUT)
+        if (pstRunTsk->usTaskStatus & OS_TASK_STATUS_TIMEOUT)   //如果任务是超时返回的   
         {
             pstRunTsk->usTaskStatus &= (~OS_TASK_STATUS_TIMEOUT);
             uwRet = LOS_ERRNO_QUEUE_TIMEOUT;
@@ -347,22 +354,23 @@ LITE_OS_SEC_TEXT UINT32 osQueueOperate(UINT32 uwQueueID, UINT32 uwOperateType, V
     }
     else
     {
-        pstQueueCB->usReadWriteableCnt[uwReadWrite]--;
+        pstQueueCB->usReadWriteableCnt[uwReadWrite]--;          
     }
 
-    osQueueBufferOperate(pstQueueCB, uwOperateType, pBufferAddr, puwBufferSize);
+    osQueueBufferOperate(pstQueueCB, uwOperateType, pBufferAddr, puwBufferSize);    //对数据进行操作
 
-    if (!LOS_ListEmpty(&pstQueueCB->stReadWriteList[!uwReadWrite])) /*lint !e514*/
+    //读完之后，
+    if (!LOS_ListEmpty(&pstQueueCB->stReadWriteList[!uwReadWrite])) /*lint !e514*/  //如果相对应的任务被挂起来了
     {
         pstResumedTask = OS_TCB_FROM_PENDLIST(LOS_DL_LIST_FIRST(&pstQueueCB->stReadWriteList[!uwReadWrite])); /*lint !e413 !e514*/
-        osTaskWake(pstResumedTask, OS_TASK_STATUS_PEND_QUEUE);
+        osTaskWake(pstResumedTask, OS_TASK_STATUS_PEND_QUEUE);                      //恢复任务，这个时候是直接唤醒任务，不需要操作usReadWriteableCnt
         LOS_IntRestore(uvIntSave);
         LOS_Schedule();
         return LOS_OK;
     }
     else
     {
-        pstQueueCB->usReadWriteableCnt[!uwReadWrite]++; /*lint !e514*/
+        pstQueueCB->usReadWriteableCnt[!uwReadWrite]++; /*lint !e514*/              //相对用的减
     }
 
 QUEUE_END:

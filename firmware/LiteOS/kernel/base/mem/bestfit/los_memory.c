@@ -82,7 +82,7 @@ LITE_OS_SEC_TEXT_INIT UINT32 osMemSystemInit()
     UINT32 uwRet;
     UINT32 uwMemSize;
 
-    m_aucSysMem0 = (UINT8 *)(((UINT32)m_aucSysMem0 + (64 - 1)) & ~(64 - 1));
+     = (UINT8 *)(((UINT32)m_aucSysMem0 + (64 - 1)) & ~(64 - 1));
     uwMemSize = g_sys_mem_addr_end  - OS_SYS_NOCACHEMEM_SIZE - (UINT32)m_aucSysMem0;
     PRINT_INFO("LiteOS heap memory address:0x%x,size:0x%x\n",m_aucSysMem0,uwMemSize);
     uwRet = LOS_MemInit(m_aucSysMem0, uwMemSize);

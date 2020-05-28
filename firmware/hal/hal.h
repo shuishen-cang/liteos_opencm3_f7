@@ -18,14 +18,17 @@
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/dac.h>
 #include <libopencm3/stm32/dma.h>
-
+#include <libopencm3/stm32/usart.h>
 #include "board.h"
+
+#include "hal_uart.h"
+#include "usr_uart.h"
+#include "usr_blink.h"
 
 
 #define irq_enable() 	__asm__ volatile("CPSIE  I":::"memory");
 #define irq_disable() 	__asm__ volatile("CPSID  I":::"memory");
 #define cang_abs(n)     ((n >= 0) ? n : -n)
-
 
 void hal_initial(void);
 void hal_delayus(uint16_t us);

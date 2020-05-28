@@ -5,7 +5,6 @@ ALL_INC 		+=
 ALL_SRC    		= 	main.c 					
 
 include app/app.mk
-include board/board.mk
 include hal/hal.mk
 include LiteOS/liteos.mk
 

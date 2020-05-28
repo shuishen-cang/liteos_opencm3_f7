@@ -75,7 +75,7 @@ LITE_OS_SEC_TEXT_INIT UINT32 osTickStart(VOID)
 #if (OS_HWI_WITH_ARG == YES)
     osSetVector(SysTick_IRQn, (HWI_PROC_FUNC)osTickHandler, NULL);
 #else
-    osSetVector(SysTick_IRQn, osTickHandler);
+    osSetVector(-1, osTickHandler);
 #endif
 #endif
 
