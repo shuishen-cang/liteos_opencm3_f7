@@ -263,7 +263,6 @@ LITE_OS_SEC_TEXT static INLINE VOID osQueueBufferOperate(QUEUE_CB_S *pstQueueCB,
     }
 
     pucQueueNode = &(pstQueueCB->pucQueue[(usQueuePosion * (pstQueueCB->usQueueSize))]);    //对上述的地址进行指针计算，返回一个指针
-
     if(OS_QUEUE_IS_POINT(uwOperateType))                        //如果队列的对象只是一个数据
     {
         if(OS_QUEUE_IS_READ(uwOperateType))                     //如果是读操作
@@ -320,6 +319,7 @@ LITE_OS_SEC_TEXT UINT32 osQueueOperate(UINT32 uwQueueID, UINT32 uwOperateType, V
     }
     else if(OS_QUEUE_IS_WRITE(uwOperateType) && (*puwBufferSize > pstQueueCB->usQueueSize - sizeof(UINT32)))
     {
+        // printf("flag:%d\n",pstQueueCB->usQueueSize - sizeof(UINT32));
         uwRet = LOS_ERRNO_QUEUE_WRITE_SIZE_TOO_BIG;         //读取深度太大
         goto QUEUE_END;
     }
@@ -501,16 +501,17 @@ LITE_OS_SEC_TEXT UINT32 LOS_QueueWrite(UINT32 uwQueueID, VOID *pBufferAddr, UINT
     UINT32 uwRet;
     UINT32 uwOperateType;
 
-    uwBufferSize = sizeof(UINT32*);
+    //uwBufferSize = sizeof(UINT32*);   //这里貌似存在一个bug
 
     uwRet = osQueueWriteParameterCheck(uwQueueID, pBufferAddr, &uwBufferSize, uwTimeOut);
     if(uwRet != LOS_OK)
     {
         return uwRet;
     }
-
+    
     uwOperateType = OS_QUEUE_OPERATE_TYPE(OS_QUEUE_WRITE, OS_QUEUE_TAIL, OS_QUEUE_POINT);
-    return osQueueOperate(uwQueueID, uwOperateType, &pBufferAddr, &uwBufferSize, uwTimeOut);
+    // return osQueueOperate(uwQueueID, uwOperateType, pBufferAddr, &uwBufferSize, uwTimeOut);  麻蛋，这里又是一个bug
+    return osQueueOperate(uwQueueID, uwOperateType, pBufferAddr, &uwBufferSize, uwTimeOut);
 }
 
 /*****************************************************************************

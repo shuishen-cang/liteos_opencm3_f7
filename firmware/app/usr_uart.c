@@ -1,5 +1,4 @@
 #include "usr_uart.h"
-
 #include "los_config.h"
 #include "los_task.h"
 #include "los_task.h"
@@ -8,12 +7,13 @@ static UINT32 uart_tskHandle_ld;
 VOID uart_thread_proc(UINT32 uwArg){                  
     uwArg = uwArg;
 
+    uint8_t temp;
     while(1){
-		
-        LOS_Msleep(400);
+        if(hal_uart_read(&temp,1,LOS_WAIT_FOREVER) > 0){
+            printf("recv:%x!\n",temp);
+        }    
     }
 }
-
 
 void usr_uart_initial(void){
 	hal_uart_initial();

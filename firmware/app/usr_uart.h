@@ -3,7 +3,6 @@
 
 #include "board.h"
 
-
 void usr_uart_initial(void);
 
 #endif

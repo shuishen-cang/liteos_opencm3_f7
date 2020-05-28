@@ -31,8 +31,7 @@ int _write(int file, char *ptr, int len)
 	int c = len;
 
 	if (file == STDOUT_FILENO || file == STDERR_FILENO) {
-		for(int i = 0;i < len;i ++)
-			usart_send_blocking(USART3,ptr[i]);
+			hal_uart_write(&ptr[0],len,0xFFFFFF);
 
 		return c;
 	}

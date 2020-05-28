@@ -5,7 +5,6 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/hal/**",
-                "${workspaceFolder}/board/**",
                 "${workspaceFolder}/LiteOS/**",
                 "${workspaceFolder}/*/**",
                 "/home/luocang/workspace/02STM32/01opencm3/libopencm3/**"
